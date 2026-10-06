@@ -1,8 +1,8 @@
 // Lớp chữ 2D phủ lên khung hình (tiêu đề, phụ đề, nước đi, "CHIẾU HẾT!").
 // Cùng một canvas dùng cho xem trước và ghép vào video khi quay.
-const FONT = '"Be Vietnam Pro", system-ui, sans-serif';
+export const FONT = '"Be Vietnam Pro", system-ui, sans-serif';
 
-function wrap(ctx, text, maxWidth) {
+export function wrap(ctx, text, maxWidth) {
   const words = text.split(/\s+/).filter(Boolean);
   const lines = [];
   let line = '';
@@ -17,7 +17,7 @@ function wrap(ctx, text, maxWidth) {
   return lines;
 }
 
-function roundRect(ctx, x, y, w, h, r) {
+export function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -119,6 +119,8 @@ export class Overlay {
       lines.forEach((l, i) => ctx.fillText(l, W / 2, y + pad + i * lh));
       ctx.restore();
     }
+
+    if (this.custom) this.custom(ctx, W, H, now, u);
 
     if (this.banner) {
       const t = (now - this.banner.start) / 1000;

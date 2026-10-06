@@ -13,6 +13,9 @@ import { createStudioEnvironment, createBackgroundTexture } from './studio.js';
 import { Overlay } from './overlay.js';
 import { Sound } from './sound.js';
 import { SAMPLES } from './samples.js';
+import * as eightQueens from './videos/eightQueens.js';
+
+const VIDEOS = [eightQueens];
 
 // ======================= Cài đặt =======================
 const DEFAULTS = {
@@ -1524,7 +1527,8 @@ function updateContactShadows() {
 const tmpV = new THREE.Vector3();
 function renderFrame(now) {
   stepTweens(now);
-  controls.update();
+  if (director) director.update(Math.min(director.meta.duration, (now - director.start) / 1000));
+  else controls.update();
   if (bokeh.enabled) bokeh.uniforms.focus.value = camera.position.distanceTo(tmpV.copy(controls.target));
   updateContactShadows();
   if (threatened.length) {
@@ -1548,9 +1552,75 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
+// ======================= Kịch bản video =======================
+let director = null;
+let directorSaved = null;
+
+function startVideo(index, { offline = false } = {}) {
+  stopVideo();
+  stopPlaying();
+  clearSelection(false);
+  resetGame('8/8/8/8/8/8/8/8 w - - 0 1');
+  arrows = []; circles = [];
+  renderMarks();
+  directorSaved = { showTitle: overlay.showTitle, showCaption: overlay.showCaption, showMove: overlay.showMove, dof: bokeh.enabled, autoRotate: controls.autoRotate };
+  overlay.showTitle = overlay.showCaption = overlay.showMove = false;
+  overlay.banner = null;
+  bokeh.enabled = false;
+  controls.autoRotate = false;
+  controls.enabled = false;
+  const mod = VIDEOS[index];
+  director = mod.createVideo({
+    scene, camera, overlay, squareToPosition, fitDistance,
+    createPiece: (type) => createPieceObject(type, 'b', materials.gold),
+  });
+  director.start = offline ? 0 : performance.now();
+  document.body.classList.add('video-mode');
+  return director;
+}
+
+function stopVideo() {
+  if (!director) return;
+  director.dispose();
+  director = null;
+  overlay.showTitle = directorSaved.showTitle;
+  overlay.showCaption = directorSaved.showCaption;
+  overlay.showMove = directorSaved.showMove;
+  bokeh.enabled = directorSaved.dof;
+  controls.autoRotate = directorSaved.autoRotate;
+  controls.enabled = true;
+  document.body.classList.remove('video-mode');
+  resetGame();
+  goToPreset(currentPreset, 0);
+}
+
+async function recordVideo(index) {
+  if (recorder) return;
+  startVideo(index);
+  await sleep(300);
+  director.start = performance.now();
+  startRecording();
+  await sleep(director.meta.duration * 1000 + 400);
+  stopRecording();
+}
+
+function setupVideoUI() {
+  const sel = $('video-script');
+  VIDEOS.forEach((v, i) => {
+    const o = document.createElement('option');
+    o.value = i;
+    o.textContent = `${v.meta.name} (${v.meta.duration}s)`;
+    sel.appendChild(o);
+  });
+  $('btn-video-play').onclick = () => startVideo(Number(sel.value));
+  $('btn-video-rec').onclick = () => recordVideo(Number(sel.value));
+  $('btn-video-stop').onclick = () => { stopRecording(); stopVideo(); };
+}
+
 // ======================= Khởi động =======================
 async function init() {
   setupUI();
+  setupVideoUI();
   applySize();
   const custom = await loadCustomModels();
   if (custom.length) toast(`Đã dùng model riêng: ${custom.join(', ')}`);
@@ -1563,5 +1633,15 @@ async function init() {
     snapshot: () => { renderFrame(performance.now()); composeFrame(); return recCanvas.toDataURL('image/jpeg', 0.85); },
     camera, controls, scene, actors: () => actors, click: handleClick, setPlaceTool,
     game: () => game, loadText, goToPreset, redo, undo, jumpTo, settings, overlay };
+  // Render từng khung hình (dùng để xuất video ngoài trình duyệt)
+  window.__video = {
+    list: VIDEOS.map((v) => v.meta),
+    start: (i = 0) => { paused = true; return startVideo(i, { offline: true }).meta; },
+    frame: (t, quality = 0.92) => {
+      renderFrame(t * 1000);
+      composeFrame();
+      return recCanvas.toDataURL('image/jpeg', quality);
+    },
+  };
 }
 init();
