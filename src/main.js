@@ -28,6 +28,12 @@ const DEFAULTS = {
   sound: true,
   autoClearArrows: true,
   autoQueen: false,
+  hintStyle: 'dot', // 'dot' | 'square'
+  hintColorDot: '#1b1b20',
+  hintColorSquare: '#3fc463',
+  hintOpacity: 0.45,
+  captureColor: '#ef4a3e',
+  captureGlow: true,
   banners: true,
   showTitle: true,
   showCaption: true,
@@ -347,6 +353,7 @@ scene.add(marks);
 const flatMat = (color, opacity) =>
   new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
 const squareGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+const hintSquareGeo = new THREE.PlaneGeometry(0.96, 0.96).rotateX(-Math.PI / 2);
 const dotGeo = new THREE.CircleGeometry(0.15, 32).rotateX(-Math.PI / 2);
 const ringGeo = new THREE.RingGeometry(0.41, 0.49, 48).rotateX(-Math.PI / 2);
 const markRingGeo = new THREE.RingGeometry(0.39, 0.46, 48).rotateX(-Math.PI / 2);
@@ -451,12 +458,19 @@ function renderMarks() {
   }
   if (selected) {
     addFlat(squareGeo, flatMat('#ffd36b', 0.42), selected, 0.0035);
+    const square = settings.hintStyle === 'square';
+    const op = settings.hintOpacity;
+    const moveColor = square ? settings.hintColorSquare : settings.hintColorDot;
     for (const [sq, info] of legalTargets) {
       if (info.capture) {
-        addFlat(squareGeo, flatMat('#ef4a3e', 0.22), sq, 0.0038);
-        addFlat(ringGeo, flatMat('#ef4a3e', 0.85), sq, 0.004);
-      }
-      else addFlat(dotGeo, flatMat('#111114', 0.38), sq, 0.004);
+        addFlat(hintSquareGeo, flatMat(settings.captureColor, square ? op : op * 0.5), sq, 0.0038);
+        if (!square) addFlat(ringGeo, flatMat(settings.captureColor, Math.min(1, op + 0.4)), sq, 0.004);
+        // bắt tốt qua đường: quân bị ăn nằm ở ô khác
+        if (info.capturedSquare && info.capturedSquare !== sq) {
+          addFlat(hintSquareGeo, flatMat(settings.captureColor, op * 0.6), info.capturedSquare, 0.0038);
+        }
+      } else if (square) addFlat(hintSquareGeo, flatMat(moveColor, op), sq, 0.0038);
+      else addFlat(dotGeo, flatMat(moveColor, Math.min(1, op * 0.85)), sq, 0.004);
     }
   }
   for (const c of circles) addFlat(markRingGeo, flatMat(COLORS[c.color] || COLORS.G, 0.85), c.sq, 0.0045);
@@ -917,7 +931,34 @@ function liftActor(a, up) {
   tween({ dur: 0.16, easing: ease.out, update: (k) => (a.obj.position.y = THREE.MathUtils.lerp(y0, y1, k)) });
 }
 
+// Quân có thể bị ăn: đổi tạm sang vật liệu phát sáng
+const threatMats = new Map(); // color -> material
+let threatened = []; // actors đang phát sáng
+function threatMaterial(color) {
+  const base = metalFor(color);
+  let m = threatMats.get(base);
+  if (!m) {
+    m = base.clone();
+    threatMats.set(base, m);
+  }
+  m.emissive.set(settings.captureColor);
+  return m;
+}
+function setThreatGlow(squares) {
+  for (const a of threatened) a.obj.traverse((o) => o.isMesh && (o.material = metalFor(a.color)));
+  threatened = [];
+  if (!settings.captureGlow) return;
+  for (const sq of squares) {
+    const a = actorAt(sq);
+    if (!a) continue;
+    const mat = threatMaterial(a.color);
+    a.obj.traverse((o) => o.isMesh && (o.material = mat));
+    threatened.push(a);
+  }
+}
+
 function clearSelection(render = true) {
+  setThreatGlow([]);
   if (selected) liftActor(actorAt(selected), false);
   selected = null;
   legalTargets = new Map();
@@ -997,11 +1038,16 @@ function select(sq) {
   legalTargets = new Map();
   if (mode === 'rules') {
     for (const m of game.moves({ square: sq, verbose: true })) {
-      legalTargets.set(m.to, { capture: !!m.captured, promotion: !!m.promotion });
+      const ep = m.flags.includes('e');
+      legalTargets.set(m.to, {
+        capture: !!m.captured, promotion: !!m.promotion,
+        capturedSquare: m.captured ? (ep ? m.to[0] + m.from[1] : m.to) : null,
+      });
     }
   } else {
     legalTargets = pseudoMoves(sq);
   }
+  setThreatGlow([...legalTargets].filter(([, i]) => i.capture).map(([s, i]) => i.capturedSquare || s));
   liftActor(actorAt(sq), true);
   sound.play('select');
   renderMarks();
@@ -1283,6 +1329,32 @@ function setupFreeTools() {
   $('free-tools').hidden = mode !== 'free';
 }
 
+function setupHintControls() {
+  const style = $('hint-style'), color = $('hint-color'), cap = $('capture-color'), op = $('hint-opacity');
+  const rerender = () => { if (selected) select(selected); else renderMarks(); };
+  const syncColor = () => (color.value = settings.hintStyle === 'square' ? settings.hintColorSquare : settings.hintColorDot);
+  style.value = settings.hintStyle;
+  syncColor();
+  cap.value = settings.captureColor;
+  op.value = settings.hintOpacity;
+  style.onchange = () => { settings.hintStyle = style.value; syncColor(); saveSettings(); rerender(); };
+  color.oninput = () => {
+    settings[settings.hintStyle === 'square' ? 'hintColorSquare' : 'hintColorDot'] = color.value;
+    saveSettings();
+    rerender();
+  };
+  cap.oninput = () => { settings.captureColor = cap.value; saveSettings(); rerender(); };
+  op.oninput = () => { settings.hintOpacity = Number(op.value); saveSettings(); rerender(); };
+  bindCheckbox('opt-capture-glow', 'captureGlow', rerender);
+  $('btn-hint-reset').onclick = () => {
+    for (const k of ['hintStyle', 'hintColorDot', 'hintColorSquare', 'hintOpacity', 'captureColor', 'captureGlow']) settings[k] = DEFAULTS[k];
+    style.value = settings.hintStyle; syncColor(); cap.value = settings.captureColor; op.value = settings.hintOpacity;
+    $('opt-capture-glow').checked = settings.captureGlow;
+    saveSettings();
+    rerender();
+  };
+}
+
 function setupUI() {
   $('btn-new').onclick = () => { resetGame(); settings.caption = ''; $('caption').value = ''; refreshOverlay(); };
   $('btn-prev').onclick = () => { stopPlaying(); undo(); };
@@ -1352,6 +1424,7 @@ function setupUI() {
   bindCheckbox('opt-sound', 'sound', (v) => (sound.enabled = v));
   bindCheckbox('opt-autoclear', 'autoClearArrows');
   bindCheckbox('opt-autoqueen', 'autoQueen');
+  setupHintControls();
   bindCheckbox('opt-banners', 'banners');
   bindCheckbox('show-title', 'showTitle', refreshOverlay);
   bindCheckbox('show-caption', 'showCaption', refreshOverlay);
@@ -1454,6 +1527,10 @@ function renderFrame(now) {
   controls.update();
   if (bokeh.enabled) bokeh.uniforms.focus.value = camera.position.distanceTo(tmpV.copy(controls.target));
   updateContactShadows();
+  if (threatened.length) {
+    const k = 0.35 + 0.3 * (0.5 + 0.5 * Math.sin(now / 180));
+    for (const m of threatMats.values()) m.emissiveIntensity = k;
+  }
   if (checkGlow.visible) checkGlow.material.opacity = 0.75 + 0.25 * Math.sin(now / 160);
   composer.render();
   overlay.draw(now);

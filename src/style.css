@@ -282,3 +282,11 @@ body.hide-ui #btn-hide:hover { opacity: 0.8; }
 #palette button[data-tool='erase'] { grid-column: span 6; font-size: 16px; }
 #palette button[data-tool='erase']::after { content: ' Cục tẩy'; font-size: 13px; }
 #palette button.active { background: #4a3b16; border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+
+h2.sub { margin-top: 14px; }
+label.color { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+input[type='color'] {
+  width: 44px; height: 30px; padding: 2px; border: 1px solid var(--line);
+  border-radius: 8px; background: #0f0f13; cursor: pointer;
+}
+#btn-hint-reset { flex: 0 0 auto; }
