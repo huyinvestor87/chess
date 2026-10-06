@@ -6,7 +6,7 @@ import { FONT, wrap, roundRect } from '../overlay.js';
 export const meta = {
   id: '8queens',
   name: 'Thách đố 8 quân Hậu',
-  duration: 38,
+  duration: 41.5,
   coverTime: 1.6,
 };
 
@@ -63,6 +63,7 @@ const CAM = [
   { t: 32.6, az: 0, polar: 0.42, f: 0.95, target: [0, 0, 0.7] },
   { t: 35.0, az: 0.55, polar: 1.0, f: 0.68, target: [0, 0.2, 0.9] },
   { t: 38.0, az: 0.95, polar: 1.04, f: 0.64, target: [0, 0.2, 0.9] },
+  { t: 41.5, az: 1.25, polar: 1.06, f: 0.66, target: [0, 0.2, 0.9] },
 ];
 
 export function createVideo(api) {
@@ -203,6 +204,35 @@ export function createVideo(api) {
   const fade = (t, a, b, inD = 0.35, outD = 0.35) => Math.min(seg(t, a, a + inD), 1 - seg(t, b - outD, b));
   const GOLD_GRAD = ['#fff7d6', '#ffd56a', '#e09a1a'];
 
+  function drawFollow(ctx, W, H, u, t, t0, t1, boxY, pillY) {
+    const fA = fade(t, t0, t1, 0.35, 0.35);
+    if (fA <= 0) return;
+    captionBox(ctx, 'Follow ngay để không bỏ lỡ thế cờ “hack não” tiếp theo!', W, H, boxY, fA, u, { size: 54, color: '#ffffff', accent: 'rgba(242,193,78,0.9)', bg: 'rgba(0,0,0,0.72)' });
+    // nút "+ FOLLOW" nhịp đập
+    const a = fade(t, t0 + 0.4, t1, 0.3, 0.35);
+    const beat = 1 + 0.06 * Math.max(0, Math.sin((t - t0 - 0.4) * Math.PI * 2.2));
+    const sc = pop(t, t0 + 0.4, 0.35) * beat;
+    if (a <= 0 || sc <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.translate(W / 2, H * pillY);
+    ctx.scale(sc, sc);
+    ctx.font = `900 ${Math.round(56 * u)}px ${FONT}`;
+    const label = '+ FOLLOW';
+    const w = ctx.measureText(label).width + 90 * u, h = 104 * u;
+    roundRect(ctx, -w / 2, -h / 2, w, h, h / 2);
+    ctx.shadowColor = 'rgba(254,44,85,0.7)';
+    ctx.shadowBlur = 30 * u;
+    ctx.fillStyle = '#fe2c55';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, 0, 4 * u);
+    ctx.restore();
+  }
+
   function drawOverlay(ctx, W, H, _now, u) {
     const t = T;
     // ===== COVER =====
@@ -244,7 +274,7 @@ export function createVideo(api) {
     const rA = fade(t, 3.3, 8.0);
     text(ctx, 'LUẬT CHƠI', W / 2, H * 0.1, { size: 54, gradient: GOLD_GRAD, alpha: rA, scale: pop(t, 3.3) }, u);
     captionBox(ctx, 'Đặt 8 quân Hậu lên bàn cờ 8×8', W, H, 0.18, fade(t, 3.6, 8.0), u, { size: 52 });
-    captionBox(ctx, 'KHÔNG con nào được ăn con nào!', W, H, 0.765, fade(t, 4.6, 8.0), u, { size: 54, color: '#ffd56a', accent: 'rgba(242,193,78,0.8)' });
+    captionBox(ctx, 'KHÔNG con nào được ăn con nào!', W, H, 0.765, fade(t, 6.0, 8.0), u, { size: 54, color: '#ffd56a', accent: 'rgba(242,193,78,0.8)' });
 
     // ===== HẬU ĐI THẾ NÀO =====
     text(ctx, 'HẬU ĂN THẾ NÀO?', W / 2, H * 0.1, { size: 58, gradient: GOLD_GRAD, alpha: fade(t, 8.1, 13.0), scale: pop(t, 8.1) }, u);
@@ -282,10 +312,14 @@ export function createVideo(api) {
     captionBox(ctx, 'Mỗi Hậu mới phải nằm ở ô KHÔNG bị tô đỏ', W, H, 0.765, fade(t, SOL_START, 32.4), u);
 
     // ===== KẾT =====
-    const eA = fade(t, 33.0, 38.5, 0.3, 0.01);
+    const eA = fade(t, 33.0, 42, 0.3, 0.01);
     text(ctx, 'HOÀN THÀNH!', W / 2, H * 0.12, { size: 120, weight: 900, gradient: ['#eaffef', '#33d17a', '#16a34a'], stroke: 18, alpha: eA, scale: pop(t, 33.0, 0.4), glow: 'rgba(51,209,122,0.6)' }, u);
-    captionBox(ctx, 'Có tất cả 92 cách xếp khác nhau!', W, H, 0.69, fade(t, 34.3, 38.5, 0.35, 0.01), u, { size: 54, color: '#ffd56a', accent: 'rgba(242,193,78,0.8)' });
-    captionBox(ctx, 'Bạn tìm được cách nào? Comment nhé!', W, H, 0.785, fade(t, 35.5, 38.5, 0.35, 0.01), u, { size: 46 });
+    captionBox(ctx, 'Có tất cả 92 cách xếp khác nhau!', W, H, 0.69, fade(t, 34.3, 38.4, 0.35, 0.4), u, { size: 54, color: '#ffd56a', accent: 'rgba(242,193,78,0.8)' });
+    captionBox(ctx, 'Bạn tìm được cách nào? Comment nhé!', W, H, 0.785, fade(t, 35.5, 38.4, 0.35, 0.4), u, { size: 46 });
+
+    // ===== KÊU GỌI FOLLOW: ngay sau cover (đông người xem nhất) + nhắc lại ở cuối =====
+    drawFollow(ctx, W, H, u, t, 3.4, 6.0, 0.765, 0.665);
+    drawFollow(ctx, W, H, u, t, 38.3, 42, 0.7, 0.805);
   }
 
   // ---------- cập nhật theo thời gian ----------
