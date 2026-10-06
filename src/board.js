@@ -121,7 +121,7 @@ export function createBoard({ reflectionSize = 1024 } = {}) {
   // Lớp nhận bóng đổ phủ trên mặt ô
   const shadowCatcher = new THREE.Mesh(
     new THREE.PlaneGeometry(8, 8),
-    new THREE.ShadowMaterial({ opacity: 0.45 })
+    new THREE.ShadowMaterial({ opacity: 0.3 })
   );
   shadowCatcher.rotation.x = -Math.PI / 2;
   shadowCatcher.position.y = 0.0005;
@@ -201,7 +201,7 @@ export function createBoard({ reflectionSize = 1024 } = {}) {
   table.position.y = TABLE_Y - 0.001;
   group.add(table);
 
-  const tableShadow = new THREE.Mesh(new THREE.PlaneGeometry(34, 34), new THREE.ShadowMaterial({ opacity: 0.5 }));
+  const tableShadow = new THREE.Mesh(new THREE.PlaneGeometry(34, 34), new THREE.ShadowMaterial({ opacity: 0.35 }));
   tableShadow.rotation.x = -Math.PI / 2;
   tableShadow.position.y = TABLE_Y + 0.001;
   tableShadow.receiveShadow = true;

@@ -219,7 +219,7 @@ export function createPieceObject(type, color, material) {
       if (o.isMesh) {
         o.material = material;
         o.castShadow = true;
-        o.receiveShadow = true;
+        o.receiveShadow = false;
       }
     });
     inner.add(clone);
@@ -227,7 +227,7 @@ export function createPieceObject(type, color, material) {
     for (const g of getPartGeometries(type)) {
       const m = new THREE.Mesh(g, material);
       m.castShadow = true;
-      m.receiveShadow = true;
+      m.receiveShadow = false;
       inner.add(m);
     }
     inner.scale.setScalar(PIECE_SCALE);

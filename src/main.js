@@ -77,13 +77,14 @@ controls.autoRotateSpeed = 0.5;
 
 // Ánh sáng
 const key = new THREE.DirectionalLight(0xfff4e6, 2.4);
-key.position.set(5, 11, 7);
+// Đèn chính gần như thẳng đứng => bóng ngắn, gọn, không đè lên quân bên cạnh
+key.position.set(2.2, 15, 4.5);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
-Object.assign(key.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 40 });
-key.shadow.bias = -0.0004;
-key.shadow.normalBias = 0.02;
-key.shadow.radius = 3;
+Object.assign(key.shadow.camera, { left: -7.5, right: 7.5, top: 7.5, bottom: -7.5, near: 5, far: 30 });
+key.shadow.bias = -0.0003;
+key.shadow.normalBias = 0.015;
+key.shadow.radius = 4;
 scene.add(key);
 const rim = new THREE.DirectionalLight(0xdfe8ff, 1.3);
 rim.position.set(-6, 6, -9);
@@ -347,7 +348,7 @@ const flatMat = (color, opacity) =>
   new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
 const squareGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
 const dotGeo = new THREE.CircleGeometry(0.15, 32).rotateX(-Math.PI / 2);
-const ringGeo = new THREE.RingGeometry(0.38, 0.47, 48).rotateX(-Math.PI / 2);
+const ringGeo = new THREE.RingGeometry(0.41, 0.49, 48).rotateX(-Math.PI / 2);
 const markRingGeo = new THREE.RingGeometry(0.39, 0.46, 48).rotateX(-Math.PI / 2);
 
 const COLORS = { G: '#3fc463', R: '#ef4a3e', B: '#3d8ff0', Y: '#f2c14e' };
@@ -375,6 +376,7 @@ checkGlow.visible = false;
 scene.add(checkGlow);
 
 let selected = null; // square
+let placeTool = null; // null | 'erase' | { type, color } (chế độ tự do)
 let legalTargets = new Map(); // square -> move info
 let arrows = []; // {from,to,color}
 let circles = []; // {sq,color}
@@ -444,13 +446,16 @@ function renderMarks() {
   const last = past[past.length - 1];
   if (last) {
     const mat = flatMat('#f2c14e', 0.26);
-    addFlat(squareGeo, mat, last.from, 0.003);
-    addFlat(squareGeo, mat, last.to, 0.003);
+    if (last.from) addFlat(squareGeo, mat, last.from, 0.003);
+    if (last.to) addFlat(squareGeo, mat, last.to, 0.003);
   }
   if (selected) {
     addFlat(squareGeo, flatMat('#ffd36b', 0.42), selected, 0.0035);
     for (const [sq, info] of legalTargets) {
-      if (info.capture) addFlat(ringGeo, flatMat('#111114', 0.42), sq, 0.004);
+      if (info.capture) {
+        addFlat(squareGeo, flatMat('#ef4a3e', 0.22), sq, 0.0038);
+        addFlat(ringGeo, flatMat('#ef4a3e', 0.85), sq, 0.004);
+      }
       else addFlat(dotGeo, flatMat('#111114', 0.38), sq, 0.004);
     }
   }
@@ -532,6 +537,11 @@ function currentCaption() {
 function describeMove(e) {
   if (!e) return '';
   const num = Number(e.fenBefore.split(' ')[5]) || 1;
+  if (e.kind === 'place') {
+    return e.piece
+      ? `Đặt ${PIECE_VI[e.piece]} ${e.color === 'w' ? 'Trắng' : 'Đen'} ở ${e.to}`
+      : `Bỏ ${PIECE_VI[e.removed.type]} ở ${e.to}`;
+  }
   const prefix = e.kind === 'free' ? '' : e.color === 'w' ? `${num}. ` : `${num}... `;
   if (settings.moveStyle === 'san' && e.san) return prefix + e.san;
   let s;
@@ -580,6 +590,16 @@ async function performAction(action, { fromFuture = false, animate = true } = {}
       piece: p.type, color: p.color, captured: t ? { type: t.type, color: t.color } : null,
       capturedSquare: t ? action.to : null,
     };
+  } else if (action.kind === 'place') {
+    const old = game.get(action.square);
+    if (!old && !action.piece) return false;
+    if (old) game.remove(action.square);
+    if (action.piece) game.put(action.piece, action.square);
+    entry = {
+      kind: 'place', fenBefore, fenAfter: game.fen(), action, to: action.square,
+      piece: action.piece?.type, color: action.piece?.color, removed: old || null, captured: null,
+    };
+    sound.play(action.piece ? 'move' : 'select');
   } else {
     let m;
     try {
@@ -694,6 +714,7 @@ function loadText(text) {
 }
 
 function exportPgn() {
+  if (past.some((e) => e.kind !== 'move')) return game.fen();
   const g = new Chess();
   const startFen = past.length ? past[0].fenBefore : game.fen();
   const isStd = startFen === new Chess().fen();
@@ -903,6 +924,73 @@ function clearSelection(render = true) {
   if (render) renderMarks();
 }
 
+// Các ô quân có thể đi theo cách đi của nó (không xét lượt, không xét chiếu) – dùng cho chế độ tự do
+function pseudoMoves(sq) {
+  const out = new Map();
+  const p = game.get(sq);
+  if (!p) return out;
+  const f0 = sq.charCodeAt(0) - 97, r0 = Number(sq[1]) - 1;
+  const at = (f, r) => (f < 0 || f > 7 || r < 0 || r > 7 ? undefined : String.fromCharCode(97 + f) + (r + 1));
+  const tryAdd = (s) => {
+    const t = game.get(s);
+    if (t && t.color === p.color) return false;
+    out.set(s, { capture: !!t });
+    return !t;
+  };
+  const slide = (dirs) => {
+    for (const [df, dr] of dirs) {
+      for (let k = 1; k < 8; k++) {
+        const s = at(f0 + df * k, r0 + dr * k);
+        if (!s || !tryAdd(s)) break;
+      }
+    }
+  };
+  const step = (dirs) => dirs.forEach(([df, dr]) => { const s = at(f0 + df, r0 + dr); if (s) tryAdd(s); });
+  const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+  switch (p.type) {
+    case 'r': slide(ORTHO); break;
+    case 'b': slide(DIAG); break;
+    case 'q': slide([...ORTHO, ...DIAG]); break;
+    case 'k': step([...ORTHO, ...DIAG]); break;
+    case 'n': step([[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]]); break;
+    case 'p': {
+      const dir = p.color === 'w' ? 1 : -1;
+      const one = at(f0, r0 + dir);
+      if (one && !game.get(one)) {
+        out.set(one, { capture: false });
+        const two = at(f0, r0 + 2 * dir);
+        if ((p.color === 'w' ? r0 === 1 : r0 === 6) && two && !game.get(two)) out.set(two, { capture: false });
+      }
+      for (const df of [-1, 1]) {
+        const s = at(f0 + df, r0 + dir);
+        const t = s && game.get(s);
+        if (t && t.color !== p.color) out.set(s, { capture: true });
+      }
+      break;
+    }
+  }
+  return out;
+}
+
+// Ô đích hợp lệ khi đi/thả quân
+function canMoveTo(from, to) {
+  if (!from || !to || from === to) return false;
+  if (mode === 'rules') return legalTargets.has(to);
+  const p = game.get(from), t = game.get(to);
+  return !!p && !(t && t.color === p.color);
+}
+
+async function moveSelected(to) {
+  const from = selected;
+  stopPlaying();
+  if (mode === 'free') return performAction({ kind: 'free', from, to });
+  let promotion;
+  if (legalTargets.get(to).promotion) promotion = settings.autoQueen ? 'q' : await askPromotion(game.turn());
+  if (promotion === null) { clearSelection(); return syncBoard(); }
+  return performAction({ kind: 'move', from, to, promotion });
+}
+
 function select(sq) {
   clearSelection(false);
   selected = sq;
@@ -912,12 +1000,7 @@ function select(sq) {
       legalTargets.set(m.to, { capture: !!m.captured, promotion: !!m.promotion });
     }
   } else {
-    const p = game.get(sq);
-    for (let f = 0; f < 8; f++) for (let r = 1; r <= 8; r++) {
-      const s = String.fromCharCode(97 + f) + r;
-      const t = game.get(s);
-      if (s !== sq && !(t && t.color === p.color)) legalTargets.set(s, { capture: !!t });
-    }
+    legalTargets = pseudoMoves(sq);
   }
   liftActor(actorAt(sq), true);
   sound.play('select');
@@ -926,25 +1009,80 @@ function select(sq) {
 
 async function handleClick(sq) {
   if (busy || !sq) return;
-  if (selected && legalTargets.has(sq)) {
-    const from = selected;
+  if (mode === 'free' && placeTool) {
     stopPlaying();
-    if (mode === 'free') return performAction({ kind: 'free', from, to: sq });
-    let promotion;
-    if (legalTargets.get(sq).promotion) promotion = settings.autoQueen ? 'q' : await askPromotion(game.turn());
-    if (promotion === null) return;
-    return performAction({ kind: 'move', from, to: sq, promotion });
+    const cur = game.get(sq);
+    if (placeTool === 'erase') return cur && performAction({ kind: 'place', square: sq, piece: null });
+    if (cur && cur.type === placeTool.type && cur.color === placeTool.color) {
+      return performAction({ kind: 'place', square: sq, piece: null });
+    }
+    return performAction({ kind: 'place', square: sq, piece: { ...placeTool } });
   }
+  if (selected && canMoveTo(selected, sq)) return moveSelected(sq);
   const p = game.get(sq);
   if (p && sq !== selected && (mode === 'free' || p.color === game.turn())) return select(sq);
   clearSelection();
 }
 
 let pointerStart = null;
+let drag = null; // { from, actor, active }
+const dragPoint = new THREE.Vector3();
+const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.35);
+
+function pointerToPlane(e, plane, out) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  return raycaster.ray.intersectPlane(plane, out);
+}
+
+// pointerdown chạy ở pha capture để kịp tắt xoay camera khi bắt đầu kéo quân
 renderer.domElement.addEventListener('pointerdown', (e) => {
   sound.ensure();
-  pointerStart = { x: e.clientX, y: e.clientY, button: e.button, sq: squareFromEvent(e), shift: e.shiftKey, alt: e.altKey, ctrl: e.ctrlKey };
+  const sq = squareFromEvent(e);
+  pointerStart = { x: e.clientX, y: e.clientY, button: e.button, sq, shift: e.shiftKey, alt: e.altKey, ctrl: e.ctrlKey };
+  drag = null;
+  if (e.button !== 0 || busy || !sq || (mode === 'free' && placeTool)) return;
+  const p = game.get(sq);
+  const a = actorAt(sq);
+  if (p && a && (mode === 'free' || p.color === game.turn())) {
+    controls.enabled = false;
+    drag = { from: sq, actor: a, active: false };
+  }
+}, { capture: true });
+
+window.addEventListener('pointermove', (e) => {
+  if (!drag || !pointerStart) return;
+  if (!drag.active) {
+    if (Math.hypot(e.clientX - pointerStart.x, e.clientY - pointerStart.y) < 6) return;
+    drag.active = true;
+    if (selected !== drag.from) select(drag.from);
+  }
+  if (pointerToPlane(e, dragPlane, dragPoint)) {
+    drag.actor.obj.position.set(dragPoint.x, 0.35, dragPoint.z);
+  }
 });
+
+window.addEventListener('pointerup', async (e) => {
+  if (!drag) return;
+  const d = drag;
+  drag = null;
+  controls.enabled = true;
+  if (!d.active) return; // chỉ là click -> để handler click xử lý
+  pointerStart = null;
+  const p = pointerToPlane(e, boardPlane, dragPoint);
+  const to = p ? positionToSquare(dragPoint.x, dragPoint.z) : null;
+  if (to && canMoveTo(d.from, to)) return moveSelected(to);
+  if (!to && mode === 'free') {
+    // kéo ra ngoài bàn = bỏ quân
+    clearSelection(false);
+    await performAction({ kind: 'place', square: d.from, piece: null });
+    return;
+  }
+  clearSelection();
+  syncBoard(); // trả quân về chỗ cũ
+});
+
 renderer.domElement.addEventListener('pointerup', (e) => {
   if (!pointerStart) return;
   const s = pointerStart;
@@ -1006,6 +1144,13 @@ function toast(msg) {
   toast._t = setTimeout(() => t.classList.remove('show'), 3200);
 }
 
+const GLYPH = { w: { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' }, b: { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' } };
+function actionLabel(a, san) {
+  if (san) return san;
+  if (a.kind === 'place') return a.piece ? `+${GLYPH[a.piece.color][a.piece.type]}${a.square}` : `✕${a.square}`;
+  return `${a.from}-${a.to}`;
+}
+
 function updateUI() {
   labelFuture();
   $('btn-play').textContent = playing ? '⏸' : '▶';
@@ -1025,8 +1170,8 @@ function updateUI() {
   // Danh sách nước
   const list = $('moves');
   list.innerHTML = '';
-  const all = [...past.map((e) => ({ label: e.san || `${e.from}-${e.to}`, done: true })),
-    ...[...future].reverse().map((a) => ({ label: a.san || `${a.from}-${a.to}`, done: false }))];
+  const all = [...past.map((e) => ({ label: actionLabel(e.action, e.san), done: true })),
+    ...[...future].reverse().map((a) => ({ label: actionLabel(a, a.san), done: false }))];
   const startNum = Number((past[0]?.fenBefore || game.fen()).split(' ')[5]) || 1;
   const startBlack = (past[0]?.fenBefore || game.fen()).split(' ')[1] === 'b';
   all.forEach((m, i) => {
@@ -1095,6 +1240,49 @@ function bindRange(id, key, onChange) {
   });
 }
 
+function setPlaceTool(tool) {
+  placeTool = tool;
+  document.querySelectorAll('#palette button').forEach((b) => {
+    const t = b.dataset.tool;
+    const on = tool === 'erase' ? t === 'erase' : tool && t === tool.color + tool.type;
+    b.classList.toggle('active', !!on);
+  });
+  renderer.domElement.style.cursor = tool ? 'copy' : '';
+  if (tool) clearSelection();
+}
+
+function setupFreeTools() {
+  const pal = $('palette');
+  for (const color of ['w', 'b']) {
+    for (const type of ['k', 'q', 'r', 'b', 'n', 'p']) {
+      const b = document.createElement('button');
+      b.textContent = GLYPH[color][type];
+      b.title = `Đặt ${PIECE_VI[type]} ${color === 'w' ? 'Trắng' : 'Đen'}`;
+      b.dataset.tool = color + type;
+      b.onclick = () => setPlaceTool(placeTool && placeTool.color === color && placeTool.type === type ? null : { color, type });
+      pal.appendChild(b);
+    }
+  }
+  const er = document.createElement('button');
+  er.textContent = '🧽';
+  er.title = 'Cục tẩy: click quân để bỏ';
+  er.dataset.tool = 'erase';
+  er.onclick = () => setPlaceTool(placeTool === 'erase' ? null : 'erase');
+  pal.appendChild(er);
+
+  $('btn-empty').onclick = () => { setPlaceTool(null); resetGame('8/8/8/8/8/8/8/8 w - - 0 1'); };
+  $('btn-initial').onclick = () => { setPlaceTool(null); resetGame(); };
+  $('btn-turn').onclick = () => {
+    const parts = game.fen().split(' ');
+    parts[1] = parts[1] === 'w' ? 'b' : 'w';
+    parts[3] = '-';
+    game.load(parts.join(' '), { skipValidation: true });
+    toast(parts[1] === 'w' ? 'Lượt đi tiếp theo: Trắng' : 'Lượt đi tiếp theo: Đen');
+    afterPositionChange();
+  };
+  $('free-tools').hidden = mode !== 'free';
+}
+
 function setupUI() {
   $('btn-new').onclick = () => { resetGame(); settings.caption = ''; $('caption').value = ''; refreshOverlay(); };
   $('btn-prev').onclick = () => { stopPlaying(); undo(); };
@@ -1107,6 +1295,7 @@ function setupUI() {
   $('btn-rec-all').onclick = recordWholeGame;
   $('btn-shot').onclick = screenshot;
   $('btn-hide').onclick = () => document.body.classList.toggle('hide-ui');
+  setupFreeTools();
   $('btn-clear-marks').onclick = () => { arrows = []; circles = []; renderMarks(); };
 
   const sel = $('samples');
@@ -1139,6 +1328,8 @@ function setupUI() {
     r.checked = r.value === mode;
     r.onchange = () => {
       mode = r.value;
+      setPlaceTool(null);
+      $('free-tools').hidden = mode !== 'free';
       clearSelection();
       if (mode === 'rules') {
         // đảm bảo trạng thái hợp lệ cho chess.js
@@ -1190,7 +1381,7 @@ function setupUI() {
     else if (k === 'f' || k === 'F') flipBoard();
     else if (k === 'r' || k === 'R') (recorder ? stopRecording() : startRecording());
     else if (k === 'p' || k === 'P') screenshot();
-    else if (k === 'Escape') clearSelection();
+    else if (k === 'Escape') { setPlaceTool(null); clearSelection(); }
     else if (k === '1') goToPreset('white');
     else if (k === '2') goToPreset('black');
     else if (k === '3') goToPreset('top');
@@ -1201,12 +1392,68 @@ function setupUI() {
   });
 }
 
+// ======================= Bóng tiếp xúc =======================
+// Vệt bóng mềm ngay dưới chân mỗi quân; mờ & loang ra khi quân nhấc lên.
+const blobTexture = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, 'rgba(0,0,0,0.95)');
+  g.addColorStop(0.35, 'rgba(0,0,0,0.6)');
+  g.addColorStop(0.7, 'rgba(0,0,0,0.15)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+})();
+const blobGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+const blobs = new Map(); // actor -> mesh
+const _up = new THREE.Vector3();
+
+function updateContactShadows() {
+  const show = settings.shadows;
+  for (const [a, m] of blobs) {
+    if (!actors.includes(a) || !show) {
+      scene.remove(m);
+      m.material.dispose();
+      blobs.delete(a);
+    }
+  }
+  if (!show) return;
+  for (const a of actors) {
+    let m = blobs.get(a);
+    if (!m) {
+      m = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ map: blobTexture, transparent: true, depthWrite: false, opacity: 0 }));
+      m.renderOrder = 1;
+      scene.add(m);
+      blobs.set(a, m);
+    }
+    const o = a.obj;
+    const R = BASE_RADIUS[a.type] * PIECE_SCALE;
+    _up.set(0, 1, 0).applyQuaternion(o.quaternion);
+    const lying = 1 - Math.max(0, _up.y);
+    const hx = _up.x, hz = _up.z;
+    const hl = Math.hypot(hx, hz) || 1;
+    const onBoard = Math.abs(o.position.x) < 4.05 && Math.abs(o.position.z) < 4.05;
+    const ground = onBoard ? 0 : TABLE_Y;
+    const h = Math.max(0, o.position.y - ground - lying * R);
+    const len = R * 2.3 + lying * 1.1 * PIECE_SCALE;
+    m.position.set(o.position.x + (hx / hl) * lying * 0.6, ground + 0.0015, o.position.z + (hz / hl) * lying * 0.6);
+    m.rotation.y = Math.atan2(hx, hz);
+    const spread = 1 + h * 0.8;
+    m.scale.set(R * 2.3 * spread * o.scale.x, 1, len * spread * o.scale.x);
+    m.material.opacity = 0.62 * Math.max(0, 1 - h * 1.1) * Math.min(1, o.scale.x);
+  }
+}
+
 // ======================= Vòng lặp render =======================
 const tmpV = new THREE.Vector3();
 function renderFrame(now) {
   stepTweens(now);
   controls.update();
   if (bokeh.enabled) bokeh.uniforms.focus.value = camera.position.distanceTo(tmpV.copy(controls.target));
+  updateContactShadows();
   if (checkGlow.visible) checkGlow.material.opacity = 0.75 + 0.25 * Math.sin(now / 160);
   composer.render();
   overlay.draw(now);
@@ -1237,7 +1484,7 @@ async function init() {
   window.__chess = {
     pause: (v) => (paused = v),
     snapshot: () => { renderFrame(performance.now()); composeFrame(); return recCanvas.toDataURL('image/jpeg', 0.85); },
-    camera, controls, scene, actors: () => actors,
+    camera, controls, scene, actors: () => actors, click: handleClick, setPlaceTool,
     game: () => game, loadText, goToPreset, redo, undo, jumpTo, settings, overlay };
 }
 init();

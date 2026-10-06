@@ -40,7 +40,16 @@
         </div>
         <div class="row seg">
           <label><input type="radio" name="mode" value="rules" /> Đúng luật</label>
-          <label><input type="radio" name="mode" value="free" /> Tự do (đi tuỳ ý)</label>
+          <label><input type="radio" name="mode" value="free" /> Tự do / Sắp xếp</label>
+        </div>
+        <div id="free-tools" hidden>
+          <p class="hint">Click quân để xem các ô nó đi được, rồi click (hoặc kéo thả) tới ô bất kỳ. Chọn quân bên dưới rồi click ô để đặt; kéo quân ra ngoài bàn để bỏ.</p>
+          <div id="palette"></div>
+          <div class="row">
+            <button id="btn-empty">Bàn trống</button>
+            <button id="btn-initial">Thế ban đầu</button>
+            <button id="btn-turn">Đổi lượt đi</button>
+          </div>
         </div>
       </section>
 
@@ -50,7 +59,7 @@
         <textarea id="pgn" rows="4" placeholder="Dán PGN hoặc FEN vào đây…&#10;Chú thích {…} sẽ thành phụ đề, [%cal Ge2e4] = mũi tên"></textarea>
         <div class="row">
           <button id="btn-load" class="primary">Nạp</button>
-          <button id="btn-export">Xuất PGN</button>
+          <button id="btn-export" title="Thế cờ sắp xếp tự do sẽ xuất ra FEN">Xuất PGN/FEN</button>
         </div>
       </section>
 
@@ -140,7 +149,7 @@
       <section class="help">
         <h2>Mẹo</h2>
         <ul>
-          <li><b>Click</b> quân rồi click ô để đi.</li>
+          <li><b>Click</b> quân rồi click ô để đi, hoặc <b>kéo thả</b> quân.</li>
           <li><b>Chuột phải kéo</b> = vẽ mũi tên, <b>chuột phải 1 ô</b> = khoanh ô. Giữ Shift = đỏ, Alt = xanh dương, Ctrl = vàng.</li>
           <li>Phím: ← → lùi/tiến · Space phát · H ẩn bảng · F lật · R quay · P chụp · 1–5 camera.</li>
           <li>Đặt file <code>public/models/knight.glb</code>… để thay quân bằng model AI tự tạo.</li>
