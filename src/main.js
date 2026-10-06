@@ -15,8 +15,9 @@ import { Sound } from './sound.js';
 import { SAMPLES } from './samples.js';
 import * as eightQueens from './videos/eightQueens.js';
 import * as knightTour from './videos/knightTour.js';
+import * as fiveQueens from './videos/fiveQueens.js';
 
-const VIDEOS = [eightQueens, knightTour];
+const VIDEOS = [eightQueens, knightTour, fiveQueens];
 
 // ======================= Cài đặt =======================
 const DEFAULTS = {
