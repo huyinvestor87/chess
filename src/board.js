@@ -118,6 +118,15 @@ export function createBoard({ reflectionSize = 1024 } = {}) {
   board.rotation.x = -Math.PI / 2;
   group.add(board);
 
+  // Lớp nhận bóng đổ phủ trên mặt ô
+  const shadowCatcher = new THREE.Mesh(
+    new THREE.PlaneGeometry(8, 8),
+    new THREE.ShadowMaterial({ opacity: 0.3 })
+  );
+  shadowCatcher.rotation.x = -Math.PI / 2;
+  shadowCatcher.position.y = 0.0005;
+  shadowCatcher.receiveShadow = true;
+  group.add(shadowCatcher);
 
   // Khung viền đen bóng
   const outer = new THREE.Shape();
@@ -136,6 +145,8 @@ export function createBoard({ reflectionSize = 1024 } = {}) {
     color: 0x0c0c0f, metalness: 0.35, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.06,
   });
   const frame = new THREE.Mesh(frameGeo, frameMat);
+  frame.castShadow = false;
+  frame.receiveShadow = true;
   group.add(frame);
 
   // Khối thân bàn (che phần dưới mặt ô để mặt bàn không phản chiếu xuyên qua)
@@ -190,6 +201,11 @@ export function createBoard({ reflectionSize = 1024 } = {}) {
   table.position.y = TABLE_Y - 0.001;
   group.add(table);
 
+  const tableShadow = new THREE.Mesh(new THREE.PlaneGeometry(34, 34), new THREE.ShadowMaterial({ opacity: 0.35 }));
+  tableShadow.rotation.x = -Math.PI / 2;
+  tableShadow.position.y = TABLE_Y + 0.001;
+  tableShadow.receiveShadow = true;
+  group.add(tableShadow);
 
   board.__obr = board.onBeforeRender;
   table.__obr = table.onBeforeRender;
