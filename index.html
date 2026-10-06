@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cờ Vua 3D Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <main id="stage">
+      <div id="frame">
+        <canvas id="overlay"></canvas>
+        <div id="promo" hidden></div>
+      </div>
+      <div id="rec-indicator" hidden><span class="dot"></span> REC <span id="rec-time">00:00</span></div>
+      <button id="btn-hide" class="ghost" title="Ẩn/hiện bảng điều khiển (H)">☰</button>
+    </main>
+
+    <aside id="panel">
+      <header>
+        <h1>Cờ Vua 3D <span>Studio</span></h1>
+        <div id="turn">Lượt Trắng</div>
+      </header>
+
+      <section>
+        <div class="row transport">
+          <button id="btn-start" title="Về đầu (Home)">⏮</button>
+          <button id="btn-prev" title="Lùi (←)">◀</button>
+          <button id="btn-play" class="primary" title="Tự động đi (Space)">▶</button>
+          <button id="btn-next" title="Tiến (→)">▶︎|</button>
+          <button id="btn-end" title="Về cuối (End)">⏭</button>
+        </div>
+        <div id="moves"></div>
+        <div class="row">
+          <button id="btn-new">Ván mới</button>
+          <button id="btn-flip" title="F">Lật bàn</button>
+          <button id="btn-clear-marks">Xoá mũi tên</button>
+        </div>
+        <div class="row seg">
+          <label><input type="radio" name="mode" value="rules" /> Đúng luật</label>
+          <label><input type="radio" name="mode" value="free" /> Tự do (đi tuỳ ý)</label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Ván mẫu / PGN / FEN</h2>
+        <select id="samples"><option value="">— Chọn ván mẫu —</option></select>
+        <textarea id="pgn" rows="4" placeholder="Dán PGN hoặc FEN vào đây…&#10;Chú thích {…} sẽ thành phụ đề, [%cal Ge2e4] = mũi tên"></textarea>
+        <div class="row">
+          <button id="btn-load" class="primary">Nạp</button>
+          <button id="btn-export">Xuất PGN</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Camera</h2>
+        <div class="row wrap">
+          <button data-cam="white" title="1">Phía Trắng</button>
+          <button data-cam="black" title="2">Phía Đen</button>
+          <button data-cam="top" title="3">Từ trên</button>
+          <button data-cam="cinematic" title="4">Điện ảnh</button>
+          <button data-cam="side" title="5">Bên hông</button>
+        </div>
+        <label class="check"><input type="checkbox" id="auto-rotate" /> Tự xoay chậm quanh bàn</label>
+        <label class="check"><input type="checkbox" id="opt-dof" /> Xoá phông (mờ hậu cảnh)</label>
+        <p class="hint">Kéo chuột trái = xoay · Lăn chuột = zoom · Ctrl + kéo = dời</p>
+      </section>
+
+      <section>
+        <h2>Video</h2>
+        <div class="grid2">
+          <label>Khung hình
+            <select id="aspect">
+              <option value="9:16">9:16 TikTok/Reels</option>
+              <option value="4:5">4:5</option>
+              <option value="1:1">1:1</option>
+              <option value="16:9">16:9 YouTube</option>
+            </select>
+          </label>
+          <label>Chất lượng
+            <select id="quality">
+              <option value="1">1080p</option>
+              <option value="0.667">720p (nhẹ máy)</option>
+            </select>
+          </label>
+        </div>
+        <label>Tiêu đề (trên cùng)
+          <input id="title" type="text" placeholder="VD: Ván cờ ngắn nhất lịch sử" />
+        </label>
+        <label>Phụ đề (khi PGN không có chú thích)
+          <input id="caption" type="text" placeholder="VD: Bạn có biết…" />
+        </label>
+        <div class="row wrap checks">
+          <label class="check"><input type="checkbox" id="show-title" /> Tiêu đề</label>
+          <label class="check"><input type="checkbox" id="show-caption" /> Phụ đề</label>
+          <label class="check"><input type="checkbox" id="show-move" /> Nước đi</label>
+          <label class="check"><input type="checkbox" id="opt-banners" /> Chữ "CHIẾU!"</label>
+        </div>
+        <label>Kiểu ghi nước
+          <select id="move-style">
+            <option value="vi">Tiếng Việt (Mã g1 → f3)</option>
+            <option value="san">Ký hiệu quốc tế (Nf3)</option>
+          </select>
+        </label>
+        <div class="grid2">
+          <label>Tốc độ di quân <b id="speed-val"></b>
+            <input id="speed" type="range" min="0.25" max="1.5" step="0.05" />
+          </label>
+          <label>Nghỉ giữa nước <b id="delay-val"></b>
+            <input id="delay" type="range" min="0.2" max="4" step="0.1" />
+          </label>
+        </div>
+        <div class="row">
+          <button id="btn-rec" class="rec">● Quay video</button>
+          <button id="btn-shot" title="P">Chụp ảnh</button>
+        </div>
+        <button id="btn-rec-all" class="primary wide">🎬 Quay tự động cả ván (từ đầu đến cuối)</button>
+      </section>
+
+      <section>
+        <h2>Giao diện</h2>
+        <label>Quân Trắng là
+          <select id="white-metal">
+            <option value="silver">Bạc (Đen = Vàng)</option>
+            <option value="gold">Vàng (Đen = Bạc)</option>
+          </select>
+        </label>
+        <div class="row wrap checks">
+          <label class="check"><input type="checkbox" id="opt-reflect" /> Phản chiếu</label>
+          <label class="check"><input type="checkbox" id="opt-shadows" /> Bóng đổ</label>
+          <label class="check"><input type="checkbox" id="opt-coords" /> Toạ độ</label>
+          <label class="check"><input type="checkbox" id="opt-sound" /> Âm thanh</label>
+          <label class="check"><input type="checkbox" id="opt-autoclear" /> Tự xoá mũi tên</label>
+          <label class="check"><input type="checkbox" id="opt-autoqueen" /> Tự phong Hậu</label>
+        </div>
+      </section>
+
+      <section class="help">
+        <h2>Mẹo</h2>
+        <ul>
+          <li><b>Click</b> quân rồi click ô để đi.</li>
+          <li><b>Chuột phải kéo</b> = vẽ mũi tên, <b>chuột phải 1 ô</b> = khoanh ô. Giữ Shift = đỏ, Alt = xanh dương, Ctrl = vàng.</li>
+          <li>Phím: ← → lùi/tiến · Space phát · H ẩn bảng · F lật · R quay · P chụp · 1–5 camera.</li>
+          <li>Đặt file <code>public/models/knight.glb</code>… để thay quân bằng model AI tự tạo.</li>
+        </ul>
+      </section>
+    </aside>
+
+    <div id="toast"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
