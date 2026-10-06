@@ -22,7 +22,6 @@ const DEFAULTS = {
   moveDuration: 0.65,
   delay: 1.2,
   reflections: true,
-  shadows: true,
   dof: false,
   coords: true,
   sound: true,
@@ -56,8 +55,6 @@ const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'h
 renderer.setPixelRatio(1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.domElement.id = 'gl';
 frameEl.prepend(renderer.domElement);
 
@@ -77,14 +74,7 @@ controls.autoRotateSpeed = 0.5;
 
 // Ánh sáng
 const key = new THREE.DirectionalLight(0xfff4e6, 2.4);
-// Đèn chính gần như thẳng đứng => bóng ngắn, gọn, không đè lên quân bên cạnh
 key.position.set(2.2, 15, 4.5);
-key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
-Object.assign(key.shadow.camera, { left: -7.5, right: 7.5, top: 7.5, bottom: -7.5, near: 5, far: 30 });
-key.shadow.bias = -0.0003;
-key.shadow.normalBias = 0.015;
-key.shadow.radius = 4;
 scene.add(key);
 const rim = new THREE.DirectionalLight(0xdfe8ff, 1.3);
 rim.position.set(-6, 6, -9);
@@ -1346,7 +1336,6 @@ function setupUI() {
   bindRange('speed', 'moveDuration');
   bindRange('delay', 'delay');
   bindCheckbox('opt-reflect', 'reflections', (v) => board.setReflections(v));
-  bindCheckbox('opt-shadows', 'shadows', (v) => (key.castShadow = v));
   bindCheckbox('opt-dof', 'dof', (v) => (bokeh.enabled = v));
   bindCheckbox('opt-coords', 'coords', (v) => (board.coords.visible = v));
   bindCheckbox('opt-sound', 'sound', (v) => (sound.enabled = v));
@@ -1357,7 +1346,6 @@ function setupUI() {
   bindCheckbox('show-caption', 'showCaption', refreshOverlay);
   bindCheckbox('show-move', 'showMove', refreshOverlay);
   board.setReflections(settings.reflections);
-  key.castShadow = settings.shadows;
   bokeh.enabled = settings.dof;
   board.coords.visible = settings.coords;
   sound.enabled = settings.sound;
@@ -1392,68 +1380,12 @@ function setupUI() {
   });
 }
 
-// ======================= Bóng tiếp xúc =======================
-// Vệt bóng mềm ngay dưới chân mỗi quân; mờ & loang ra khi quân nhấc lên.
-const blobTexture = (() => {
-  const c = document.createElement('canvas');
-  c.width = c.height = 128;
-  const ctx = c.getContext('2d');
-  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  g.addColorStop(0, 'rgba(0,0,0,0.95)');
-  g.addColorStop(0.35, 'rgba(0,0,0,0.6)');
-  g.addColorStop(0.7, 'rgba(0,0,0,0.15)');
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 128, 128);
-  return new THREE.CanvasTexture(c);
-})();
-const blobGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
-const blobs = new Map(); // actor -> mesh
-const _up = new THREE.Vector3();
-
-function updateContactShadows() {
-  const show = settings.shadows;
-  for (const [a, m] of blobs) {
-    if (!actors.includes(a) || !show) {
-      scene.remove(m);
-      m.material.dispose();
-      blobs.delete(a);
-    }
-  }
-  if (!show) return;
-  for (const a of actors) {
-    let m = blobs.get(a);
-    if (!m) {
-      m = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ map: blobTexture, transparent: true, depthWrite: false, opacity: 0 }));
-      m.renderOrder = 1;
-      scene.add(m);
-      blobs.set(a, m);
-    }
-    const o = a.obj;
-    const R = BASE_RADIUS[a.type] * PIECE_SCALE;
-    _up.set(0, 1, 0).applyQuaternion(o.quaternion);
-    const lying = 1 - Math.max(0, _up.y);
-    const hx = _up.x, hz = _up.z;
-    const hl = Math.hypot(hx, hz) || 1;
-    const onBoard = Math.abs(o.position.x) < 4.05 && Math.abs(o.position.z) < 4.05;
-    const ground = onBoard ? 0 : TABLE_Y;
-    const h = Math.max(0, o.position.y - ground - lying * R);
-    const len = R * 2.3 + lying * 1.1 * PIECE_SCALE;
-    m.position.set(o.position.x + (hx / hl) * lying * 0.6, ground + 0.0015, o.position.z + (hz / hl) * lying * 0.6);
-    m.rotation.y = Math.atan2(hx, hz);
-    const spread = 1 + h * 0.8;
-    m.scale.set(R * 2.3 * spread * o.scale.x, 1, len * spread * o.scale.x);
-    m.material.opacity = 0.62 * Math.max(0, 1 - h * 1.1) * Math.min(1, o.scale.x);
-  }
-}
-
 // ======================= Vòng lặp render =======================
 const tmpV = new THREE.Vector3();
 function renderFrame(now) {
   stepTweens(now);
   controls.update();
   if (bokeh.enabled) bokeh.uniforms.focus.value = camera.position.distanceTo(tmpV.copy(controls.target));
-  updateContactShadows();
   if (checkGlow.visible) checkGlow.material.opacity = 0.75 + 0.25 * Math.sin(now / 160);
   composer.render();
   overlay.draw(now);
