@@ -214,7 +214,7 @@ export function createVideo(api) {
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H * 0.5);
       const s0 = pop(t, 0.05, 0.4);
-      text(ctx, 'THÁCH ĐỐ', W / 2, H * 0.1, { size: 64, weight: 800, color: '#ffffff', alpha: cov, scale: s0 }, u);
+      text(ctx, 'HACK NÃO #1', W / 2, H * 0.1, { size: 76, weight: 900, color: '#ffffff', stroke: 12, alpha: cov, scale: s0, glow: 'rgba(255,255,255,0.35)' }, u);
       text(ctx, '8 QUÂN HẬU', W / 2, H * 0.19, { size: 124, weight: 900, gradient: GOLD_GRAD, stroke: 16, alpha: cov, scale: pop(t, 0.25, 0.45), glow: 'rgba(255,190,60,0.6)' }, u);
       text(ctx, 'Xếp sao cho KHÔNG con nào ăn được con nào?', W / 2, H * 0.285, { size: 52, weight: 700, alpha: cov * seg(t, 0.6, 0.9), maxWidth: W * 0.84, stroke: 9 }, u);
       // nhãn "Bạn làm được không?"
