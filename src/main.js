@@ -14,8 +14,9 @@ import { Overlay } from './overlay.js';
 import { Sound } from './sound.js';
 import { SAMPLES } from './samples.js';
 import * as eightQueens from './videos/eightQueens.js';
+import * as knightTour from './videos/knightTour.js';
 
-const VIDEOS = [eightQueens];
+const VIDEOS = [eightQueens, knightTour];
 
 // ======================= Cài đặt =======================
 const DEFAULTS = {
