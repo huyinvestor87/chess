@@ -113,8 +113,8 @@ export function drawFollow(ctx, W, H, u, t, t0, t1, boxY, pillY) {
   ctx.restore();
 }
 
-// Nhãn đỏ nghiêng trên cover ("BẠN LÀM ĐƯỢC KHÔNG?")
-export function coverBadge(ctx, W, H, u, t, alpha, label = 'BẠN LÀM ĐƯỢC KHÔNG?') {
+// Nhãn đỏ nghiêng trên cover ("BẠN GIẢI ĐƯỢC KHÔNG?")
+export function coverBadge(ctx, W, H, u, t, alpha, label = 'BẠN GIẢI ĐƯỢC KHÔNG?') {
   if (alpha <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
