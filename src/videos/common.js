@@ -87,7 +87,7 @@ export const GOLD_GRAD = ['#fff7d6', '#ffd56a', '#e09a1a'];
 export function drawFollow(ctx, W, H, u, t, t0, t1, boxY, pillY) {
   const fA = fade(t, t0, t1, 0.35, 0.35);
   if (fA <= 0) return;
-  captionBox(ctx, 'Follow ngay để không bỏ lỡ thế cờ “hack não” tiếp theo!', W, H, boxY, fA, u, { size: 54, color: '#ffffff', accent: 'rgba(242,193,78,0.9)', bg: 'rgba(0,0,0,0.72)' });
+  captionBox(ctx, 'Follow Người Yêu Cờ để không bỏ lỡ câu đố tiếp theo!', W, H, boxY, fA, u, { size: 54, color: '#ffffff', accent: 'rgba(242,193,78,0.9)', bg: 'rgba(0,0,0,0.72)' });
   // nút "+ FOLLOW" nhịp đập
   const a = fade(t, t0 + 0.4, t1, 0.3, 0.35);
   const beat = 1 + 0.06 * Math.max(0, Math.sin((t - t0 - 0.4) * Math.PI * 2.2));

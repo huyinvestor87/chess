@@ -1,4 +1,4 @@
-// Kịch bản video TikTok: "Hack Não #2 – Mã đi tuần" (Mã đi qua cả 64 ô, mỗi ô đúng 1 lần).
+// Kịch bản video TikTok: "Đố Cờ #2 – Mã đi tuần" (Mã đi qua cả 64 ô, mỗi ô đúng 1 lần).
 import * as THREE from 'three';
 import {
   seg, easeOut, lerp, bounce, pop, fade, GOLD_GRAD, sqFR, sqName, text, captionBox, drawFollow, coverBadge, cameraRig,
@@ -6,7 +6,7 @@ import {
 
 export const meta = {
   id: 'knight-tour',
-  name: 'Hack Não #2 – Mã đi tuần',
+  name: 'Đố Cờ #2 – Mã đi tuần',
   duration: 42,
   coverTime: 1.6,
 };
@@ -168,7 +168,7 @@ export function createVideo(api) {
       g.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H * 0.5);
-      text(ctx, 'HACK NÃO #2', W / 2, H * 0.1, { size: 76, weight: 900, stroke: 12, alpha: cov, scale: pop(t, 0.05, 0.4), glow: 'rgba(255,255,255,0.35)' }, u);
+      text(ctx, 'ĐỐ CỜ #2', W / 2, H * 0.1, { size: 76, weight: 900, stroke: 12, alpha: cov, scale: pop(t, 0.05, 0.4), glow: 'rgba(255,255,255,0.35)' }, u);
       text(ctx, 'MÃ ĐI TUẦN', W / 2, H * 0.19, { size: 132, weight: 900, gradient: GOLD_GRAD, stroke: 16, alpha: cov, scale: pop(t, 0.25, 0.45), glow: 'rgba(255,190,60,0.6)' }, u);
       text(ctx, 'Đi qua cả 64 ô – mỗi ô đúng 1 lần?', W / 2, H * 0.285, { size: 54, weight: 700, alpha: cov * seg(t, 0.6, 0.9), maxWidth: W * 0.86, stroke: 9 }, u);
       coverBadge(ctx, W, H, u, t, cov * seg(t, 1.0, 1.3));

@@ -1,5 +1,9 @@
 # Chiến lược kênh TikTok cờ vua
 
+> **Đã chốt:** tên kênh **Người Yêu Cờ** (`@nguoiyeuco`), series câu đố **Đố Cờ #1, #2, #3…**,
+> câu kêu gọi: *"Follow Người Yêu Cờ để không bỏ lỡ câu đố tiếp theo!"*.
+> Tránh dùng chữ "hack" ở tên kênh, caption, hashtag (tài khoản cũ "Cờ Vua Hack Não" bị chặn đăng vì "Spam and Deceptive Account Behaviours").
+
 ## 1. Định vị
 
 **Kênh cờ vua 3D sang trọng (quân vàng/bạc), mỗi video là một câu đố hoặc một sự thật làm người xem "ồ" lên.**
