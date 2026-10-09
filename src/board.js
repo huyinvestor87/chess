@@ -108,6 +108,7 @@ export function createBoard({ reflectionSize = 1024 } = {}) {
   const board = new Reflector(new THREE.PlaneGeometry(8, 8), {
     textureWidth: reflectionSize,
     textureHeight: reflectionSize,
+    multisample: 0,
     color: 0xffffff,
     shader: makeReflectorShader(boardFragment, {
       lightColor: { value: new THREE.Color('#b4b6bb') },
@@ -193,6 +194,7 @@ export function createBoard({ reflectionSize = 1024 } = {}) {
   const table = new Reflector(new THREE.PlaneGeometry(34, 34), {
     textureWidth: reflectionSize,
     textureHeight: reflectionSize,
+    multisample: 0,
     color: 0x050507,
     shader: makeReflectorShader(tableFragment, { reflectivity: { value: 0.35 } }),
   });

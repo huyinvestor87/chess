@@ -211,6 +211,7 @@ export const KNIGHT_YAW = { w: Math.PI * 0.8, b: -Math.PI * 0.2 };
 
 export function createPieceObject(type, color, material) {
   const root = new THREE.Group();
+  root.userData.piece = true;
   const inner = new THREE.Group();
   root.add(inner);
   if (customModels[type]) {

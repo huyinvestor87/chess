@@ -110,8 +110,23 @@ scene.add(rim);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x202024, 0.25));
 
 const materials = createMaterials();
-const board = createBoard();
+const board = createBoard({ reflectionSize: settings.reflectionSize || 1024 });
 scene.add(board.group);
+// Tuỳ chọn: mặt bàn không phản chiếu quân cờ (nhẹ hơn nhiều khi xuất video offline)
+{
+  const obr = board.table.__obr;
+  const hidden = [];
+  board.table.__obr = function (...args) {
+    if (settings.tableReflectPieces === false) {
+      scene.traverse((o) => { if (o.userData.piece && o.visible) hidden.push(o); });
+      for (const o of hidden) o.visible = false;
+    }
+    obr.apply(this, args);
+    for (const o of hidden) o.visible = true;
+    hidden.length = 0;
+  };
+  board.table.onBeforeRender = board.table.__obr;
+}
 
 // Hậu kỳ
 const composerTarget = new THREE.WebGLRenderTarget(1080, 1920, { type: THREE.HalfFloatType, samples: 4 });
@@ -133,8 +148,10 @@ function applySize() {
   const [w, h] = ASPECTS[settings.aspect] || ASPECTS['9:16'];
   outW = Math.round(w * settings.quality / 2) * 2;
   outH = Math.round(h * settings.quality / 2) * 2;
-  renderer.setSize(outW, outH, false);
-  composer.setSize(outW, outH);
+  // renderScale < 1: dựng 3D ở độ phân giải thấp hơn rồi phóng lên (chữ overlay vẫn nét), dùng khi xuất video offline
+  const rs = settings.renderScale || 1;
+  renderer.setSize(Math.round(outW * rs), Math.round(outH * rs), false);
+  composer.setSize(Math.round(outW * rs), Math.round(outH * rs));
   overlayCanvas.width = recCanvas.width = outW;
   overlayCanvas.height = recCanvas.height = outH;
   camera.aspect = outW / outH;
