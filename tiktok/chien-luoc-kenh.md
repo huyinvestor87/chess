@@ -112,6 +112,8 @@ Mẫu caption:
 
 ## 10. 10 video đầu tiên (đều làm được bằng app)
 
+> ✅ Đã xong cả 10: Đố Cờ #1–#10 trong thư mục này (caption #4–#10: `do-co-4-den-10.md`).
+
 1. ✅ Thách đố 8 quân Hậu *(đã có)*
 2. Ván cờ ngắn nhất lịch sử: chiếu hết sau 2 nước (Fool's Mate) *(ván mẫu có sẵn)*
 3. Bẫy 4 nước người mới hay dính (Scholar's Mate) *(ván mẫu có sẵn)*
