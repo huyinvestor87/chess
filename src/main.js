@@ -17,7 +17,14 @@ import * as eightQueens from './videos/eightQueens.js';
 import * as knightTour from './videos/knightTour.js';
 import * as fiveQueens from './videos/fiveQueens.js';
 
-const VIDEOS = [eightQueens, knightTour, fiveQueens];
+import * as foolsMate from './videos/foolsMate.js';
+import * as scholarsMate from './videos/scholarsMate.js';
+import * as smotheredMate from './videos/smotheredMate.js';
+import * as enPassant from './videos/enPassant.js';
+import * as legalTrap from './videos/legalTrap.js';
+import * as castling from './videos/castling.js';
+import * as operaGame from './videos/operaGame.js';
+const VIDEOS = [eightQueens, knightTour, fiveQueens, foolsMate, scholarsMate, smotheredMate, enPassant, legalTrap, castling, operaGame];
 
 // ======================= Cài đặt =======================
 const DEFAULTS = {
@@ -402,7 +409,7 @@ function addFlat(geo, mat, sq, y) {
   return m;
 }
 
-function arrowShape(from, to) {
+function arrowShape(from, to, { w = 0.085, headL = 0.4, headW = 0.25 } = {}) {
   const a = squareToPosition(from), b = squareToPosition(to);
   const dx = b.x - a.x, dz = b.z - a.z;
   const P = (x, z) => new THREE.Vector2(x, z);
@@ -412,7 +419,6 @@ function arrowShape(from, to) {
     const corner = Math.abs(dz) > Math.abs(dx) ? P(a.x, b.z) : P(b.x, a.z);
     pts = [P(a.x, a.z), corner, P(b.x, b.z)];
   } else pts = [P(a.x, a.z), P(b.x, b.z)];
-  const w = 0.085, headL = 0.4, headW = 0.25;
   const d0 = pts[1].clone().sub(pts[0]).normalize();
   pts[0].addScaledVector(d0, 0.28);
   const n = pts.length;
@@ -1573,8 +1579,9 @@ function startVideo(index, { offline = false } = {}) {
   controls.enabled = false;
   const mod = VIDEOS[index];
   director = mod.createVideo({
-    scene, camera, overlay, squareToPosition, fitDistance,
-    createPiece: (type) => createPieceObject(type, 'b', materials.gold),
+    scene, camera, overlay, squareToPosition, fitDistance, arrowShape,
+    // không truyền màu: quân vàng (các video xếp Hậu/Mã); có màu: theo cài đặt kim loại của bàn cờ
+    createPiece: (type, color) => createPieceObject(type, color || 'b', color ? metalFor(color) : materials.gold),
   });
   director.start = offline ? 0 : performance.now();
   document.body.classList.add('video-mode');

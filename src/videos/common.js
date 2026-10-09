@@ -35,7 +35,7 @@ export function text(ctx, str, x, y, { size = 60, weight = 800, color = '#fff', 
   ctx.textAlign = align;
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
-  const lines = maxWidth ? wrap(ctx, str, maxWidth) : [str];
+  const lines = str.includes('\n') ? str.split('\n') : maxWidth ? wrap(ctx, str, maxWidth) : [str];
   const lh = size * u * lineHeight;
   const y0 = -((lines.length - 1) * lh) / 2;
   lines.forEach((l, i) => {
@@ -149,4 +149,74 @@ export function cameraRig(CAM, camera, fitDistance) {
     camera.lookAt(target);
     return target;
   };
+}
+
+// ---------- Các khối chữ dùng lại cho video thế cờ ----------
+// Cover: "ĐỐ CỜ #n" + tiêu đề vàng + câu hỏi + nhãn đỏ; mờ dần ở 2.7–3.2s
+export function drawCover(ctx, W, H, u, t, { num, title, sub, titleSize = 124, badge }) {
+  const cov = 1 - seg(t, 2.7, 3.2);
+  if (cov <= 0) return;
+  const g = ctx.createLinearGradient(0, 0, 0, H * 0.5);
+  g.addColorStop(0, `rgba(0,0,0,${0.75 * cov})`);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H * 0.5);
+  text(ctx, `ĐỐ CỜ #${num}`, W / 2, H * 0.1, { size: 76, weight: 900, stroke: 12, alpha: cov, scale: pop(t, 0.05, 0.4), glow: 'rgba(255,255,255,0.35)' }, u);
+  const two = title.includes('\n');
+  // thu nhỏ chữ cho vừa một dòng thay vì tự xuống dòng
+  ctx.font = `900 ${Math.round(titleSize * u)}px ${FONT}`;
+  const tw = Math.max(...title.split('\n').map((l) => ctx.measureText(l).width));
+  titleSize = Math.min(titleSize, titleSize * (W * 0.9) / tw);
+  text(ctx, title, W / 2, H * (two ? 0.2 : 0.19), { size: titleSize, weight: 900, gradient: GOLD_GRAD, stroke: 16, alpha: cov, scale: pop(t, 0.25, 0.45), glow: 'rgba(255,190,60,0.6)', maxWidth: W * 0.92 }, u);
+  text(ctx, sub, W / 2, H * (two ? 0.305 : 0.285), { size: 56, weight: 700, alpha: cov * seg(t, 0.6, 0.9), maxWidth: W * 0.86, stroke: 9 }, u);
+  coverBadge(ctx, W, H, u, t, cov * seg(t, 1.0, 1.3), badge);
+}
+
+// "ĐẾN LƯỢT BẠN!" + đếm ngược 3-2-1 bắt đầu ở cd
+export function drawYourTurn(ctx, W, H, u, t, t0, t1, cd, caption, title = 'ĐẾN LƯỢT BẠN!', capY = 0.765) {
+  text(ctx, title, W / 2, H * 0.1, { size: 84, weight: 900, gradient: GOLD_GRAD, stroke: 14, alpha: fade(t, t0, t1), scale: pop(t, t0, 0.4) }, u);
+  if (caption) captionBox(ctx, caption, W, H, capY, fade(t, t0 + 0.3, t1), u, { accent: 'rgba(242,193,78,0.8)', size: 52 });
+  for (let i = 0; i < 3; i++) {
+    const a = cd + i;
+    const x = seg(t, a, a + 1);
+    if (x <= 0 || x >= 1) continue;
+    text(ctx, String(3 - i), W / 2, H * 0.45, { size: 300, weight: 900, gradient: GOLD_GRAD, stroke: 24, alpha: 1 - seg(x, 0.7, 1), scale: 1.5 - 0.5 * easeOut(Math.min(1, x * 3)), glow: 'rgba(255,190,60,0.6)' }, u);
+  }
+}
+
+// Chữ lớn bật lên giữa màn hình ("CHIẾU HẾT!", "CÓ!"...)
+export function drawBang(ctx, W, H, u, t, str, t0, t1, { y = 0.12, size = 120, colors = ['#fff1f0', '#ff6b5e', '#d61f14'], glow = 'rgba(255,60,40,0.65)' } = {}) {
+  text(ctx, str, W / 2, H * y, { size, weight: 900, gradient: colors, stroke: 18, alpha: fade(t, t0, t1, 0.2, 0.35), scale: pop(t, t0, 0.4), glow, maxWidth: W * 0.94 }, u);
+}
+
+// Hai lựa chọn kiểu bình chọn: [ 'CÓ', 'KHÔNG' ], đáp án đúng sáng lên lúc reveal
+export function drawChoices(ctx, W, H, u, t, t0, t1, labels, correct, reveal, yFrac = 0.62) {
+  const a = fade(t, t0, t1);
+  if (a <= 0) return;
+  const n = labels.length, bw = 380 * u, bh = 130 * u, gap = 60 * u;
+  const x0 = W / 2 - (n * bw + (n - 1) * gap) / 2;
+  labels.forEach((lab, i) => {
+    const sc = pop(t, t0 + i * 0.15, 0.35);
+    if (sc <= 0) return;
+    const r = seg(t, reveal, reveal + 0.3);
+    const ok = i === correct;
+    ctx.save();
+    ctx.globalAlpha = a * (ok ? 1 : 1 - 0.6 * r);
+    const cx = x0 + i * (bw + gap) + bw / 2, cy = H * yFrac;
+    ctx.translate(cx, cy);
+    const s = sc * (ok ? 1 + 0.12 * r + 0.04 * r * Math.sin((t - reveal) * 8) : 1);
+    ctx.scale(s, s);
+    roundRect(ctx, -bw / 2, -bh / 2, bw, bh, 30 * u);
+    ctx.fillStyle = ok && r > 0 ? `rgba(30,170,90,${0.55 + 0.4 * r})` : 'rgba(0,0,0,0.7)';
+    ctx.fill();
+    ctx.lineWidth = 6 * u;
+    ctx.strokeStyle = ok && r > 0 ? '#5df59a' : 'rgba(242,193,78,0.9)';
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = `900 ${Math.round(64 * u)}px ${FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(lab, 0, 4 * u);
+    ctx.restore();
+  });
 }
