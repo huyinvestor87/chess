@@ -153,7 +153,7 @@ export function cameraRig(CAM, camera, fitDistance) {
 
 // ---------- Các khối chữ dùng lại cho video thế cờ ----------
 // Cover: "ĐỐ CỜ #n" + tiêu đề vàng + câu hỏi + nhãn đỏ; mờ dần ở 2.7–3.2s
-export function drawCover(ctx, W, H, u, t, { num, title, sub, titleSize = 124, badge }) {
+export function drawCover(ctx, W, H, u, t, { num, kicker, title, sub, titleSize = 124, badge }) {
   const cov = 1 - seg(t, 2.7, 3.2);
   if (cov <= 0) return;
   const g = ctx.createLinearGradient(0, 0, 0, H * 0.5);
@@ -161,7 +161,7 @@ export function drawCover(ctx, W, H, u, t, { num, title, sub, titleSize = 124, b
   g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H * 0.5);
-  text(ctx, `ĐỐ CỜ #${num}`, W / 2, H * 0.1, { size: 76, weight: 900, stroke: 12, alpha: cov, scale: pop(t, 0.05, 0.4), glow: 'rgba(255,255,255,0.35)' }, u);
+  text(ctx, kicker || `ĐỐ CỜ #${num}`, W / 2, H * 0.1, { size: 76, weight: 900, stroke: 12, alpha: cov, scale: pop(t, 0.05, 0.4), glow: 'rgba(255,255,255,0.35)' }, u);
   const two = title.includes('\n');
   // thu nhỏ chữ cho vừa một dòng thay vì tự xuống dòng
   ctx.font = `900 ${Math.round(titleSize * u)}px ${FONT}`;

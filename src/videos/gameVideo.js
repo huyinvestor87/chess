@@ -163,6 +163,9 @@ export function makeGameVideo(cfg) {
       o.rotation.set(0, spin, 0);
     }
 
+    // hiệu ứng riêng của từng video (đèn, phát sáng...): cfg.setup trả về hàm cập nhật theo t
+    const extra = cfg.setup ? cfg.setup({ ...api, group, objs, pieces }) : null;
+
     let T = 0;
     const info = { lastMove: null };
     function update(t) {
@@ -209,6 +212,7 @@ export function makeGameVideo(cfg) {
         glow.scale.setScalar(last.mate ? 1.15 : 1);
         glow.visible = true;
       }
+      if (extra) extra(t);
     }
 
     overlay.custom = (ctx, W, H, _now, u) => cfg.overlay(ctx, W, H, u, T, info);

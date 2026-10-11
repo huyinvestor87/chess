@@ -24,7 +24,8 @@ import * as enPassant from './videos/enPassant.js';
 import * as legalTrap from './videos/legalTrap.js';
 import * as castling from './videos/castling.js';
 import * as operaGame from './videos/operaGame.js';
-const VIDEOS = [eightQueens, knightTour, fiveQueens, foolsMate, scholarsMate, smotheredMate, enPassant, legalTrap, castling, operaGame];
+import * as pawnJourney from './videos/pawnJourney.js';
+const VIDEOS = [eightQueens, knightTour, fiveQueens, foolsMate, scholarsMate, smotheredMate, enPassant, legalTrap, castling, operaGame, pawnJourney];
 
 // ======================= Cài đặt =======================
 const DEFAULTS = {
